@@ -1,0 +1,353 @@
+<div th:fragment="enterprise">
+
+
+
+   <style>
+        .draggable {
+            padding: 10px;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .userBox, .roleBox {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .userBox {
+            transition: background-color 0.3s ease;
+            position: relative;
+            padding-right: 30px; /* Make space for the close button */
+        }
+
+        .btn-close {
+            border: none;
+            background: none;
+        }
+
+        .badge {
+            margin-left: 10px;
+        }
+    </style>
+
+    <button onclick="mobNext()" class="btn btn-success mt-2">Mob Next</button>
+    <button class="btn btn-info mt-2" onclick="shuffleUsers()">Shuffle Users</button>
+
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Users</h2>
+
+                <div class="list-group" id="userList"></div>
+                <input class="form-control" id="userName" placeholder="Enter user name" type="text">
+                <button class="btn btn-primary mt-2" onclick="addUser()">Add User</button>
+            </div>
+            <div class="col-md-6">
+                <h2>Roles</h2>
+                <div class="list-group" id="roleList"></div>
+                <input class="form-control" id="roleName" placeholder="Enter role name" type="text">
+                <button class="btn btn-secondary mt-2" onclick="addRole()">Add Role</button>
+            </div>
+        </div>
+        <h2>Inactive Users</h2>
+        <div class="list-group mb-3" id="inactiveList"></div>
+    </div>
+
+
+
+<script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function() {
+        setupDragListeners();
+        addDefaultUsersWithLimitedRoles(); // Function that adds users with roles until roles run out
+    });
+
+    function setFirstUserToLast() {
+        const userList = document.getElementById('userList');
+
+        if (userList.children.length > 1) {
+            // Get the text content of the current first user
+            const firstUserName = userList.children[0].textContent.replace(/\s-\s.*$/, ''); // Remove role from name if included
+
+            // Rotate the user list
+            const firstUser = userList.removeChild(userList.children[0]);
+            userList.appendChild(firstUser);
+
+            // Update the text content of the new first user with the previous first user's name and role
+            const role = firstUser.dataset.role || '';
+            firstUser.textContent = firstUserName + (role ? ` - ${role}` : '');
+
+            // Update the role badge if it exists
+            if (firstUser.querySelector('.badge')) {
+                firstUser.querySelector('.badge').textContent = role;
+            }
+        }
+    }
+
+    function setFirstUser(user) {
+        console.log("Set first user "+user)
+        mobNext(false, user)
+    }
+
+
+    function setupDragListeners() {
+        const lists = ['userList', 'roleList', 'inactiveList'];
+        lists.forEach(listId => {
+            const list = document.getElementById(listId);
+            list.addEventListener('dragover', function(event) {
+                event.preventDefault();
+            });
+            list.addEventListener('drop', function(event) {
+                event.preventDefault();
+                const draggingElement = document.querySelector('.dragging');
+                if (draggingElement && event.target.classList.contains('userBox')) {
+                    if (draggingElement.classList.contains('roleBox')) {
+                        handleRoleAssignment(draggingElement, event.target);
+                    } else if (draggingElement.classList.contains('userBox')) {
+                        this.insertBefore(draggingElement, event.target.nextSibling);
+                    }
+                }
+                draggingElement.classList.remove('dragging');
+            });
+        });
+    }
+
+    function handleRoleAssignment(roleBox, targetUser) {
+        if (targetUser && targetUser.classList.contains('userBox')) {
+            targetUser.style.backgroundColor = roleBox.style.backgroundColor;
+            targetUser.dataset.role = roleBox.textContent;
+            if (!targetUser.querySelector('.badge')) {
+                const roleBadge = document.createElement('span');
+                roleBadge.className = 'badge bg-secondary';
+                roleBadge.textContent = roleBox.textContent;
+                targetUser.appendChild(roleBadge);
+            } else {
+                targetUser.querySelector('.badge').textContent = roleBox.textContent;
+            }
+        }
+    }
+
+    function createUserBox(userName) {
+        const userBox = document.createElement('div');
+        userBox.className = 'userBox draggable list-group-item';
+        userBox.draggable = true;
+        userBox.textContent = userName;
+        userBox.addEventListener('dragstart', () => userBox.classList.add('dragging'));
+        userBox.addEventListener('dragend', () => userBox.classList.remove('dragging'));
+        return userBox;
+    }
+
+    function addDefaultUsersWithLimitedRoles() {
+        const defaultUsers = ["Jarkko", "Sampsa", "Markus", "Ahma", "Tuomo", "Suvi"];
+        const defaultRoles = [
+            { name: "Typist", color: "#6f42c1" },
+            { name: "Driver", color: "#dc3545" },
+          //  { name: "Facilitator", color: "#28a745" }
+        ];
+
+        // Ensure roles are created and appended to the role list
+        defaultRoles.forEach(role => {
+            const roleBox = createRoleBox(role.name, role.color);
+            document.getElementById('roleList').appendChild(roleBox);
+        });
+
+
+        defaultUsers.forEach((userName, index) => {
+            const roleInfo = defaultRoles[index] || {}; // Get the role or an empty object if index exceeds roles
+            const userBox = createUserBoxWithRole(userName, roleInfo.name, roleInfo.color);
+            document.getElementById('userList').appendChild(userBox);
+        });
+    }
+
+    function createUserBoxWithRole(userName, roleName, color) {
+        const userBox = document.createElement('div');
+        userBox.className = 'userBox draggable list-group-item';
+        userBox.draggable = true;
+        userBox.dataset.name = userName; // Store the user's name in a data attribute
+        userBox.dataset.role = roleName; // Store the role in a data attribute
+        userBox.style.backgroundColor = color || "#f8f9fa"; // Default color if no role
+
+        // Create the span for the user's name and append it to the user box
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'user-name';
+        nameSpan.textContent = userName;
+        userBox.appendChild(nameSpan);
+
+        // Create the badge for the role if there is one
+        if (roleName) {
+            const roleBadge = document.createElement('span');
+            roleBadge.className = 'badge bg-secondary ms-2';
+            roleBadge.textContent = roleName;
+            userBox.appendChild(roleBadge);
+        }
+
+        // Create the close button and append it to the user box
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = 'X';
+        closeButton.className = 'btn-close position-absolute top-0 end-0';
+        closeButton.onclick = function() {
+            moveToInactive(userBox);
+        };
+        userBox.appendChild(closeButton);
+
+        userBox.addEventListener('dragstart', () => userBox.classList.add('dragging'));
+        userBox.addEventListener('dragend', () => userBox.classList.remove('dragging'));
+        return userBox;
+    }
+
+    function createUserBoxWithRole(userName, roleName, color) {
+        const userBox = document.createElement('div');
+        userBox.className = 'userBox draggable list-group-item';
+        userBox.draggable = true;
+        userBox.dataset.name = userName; // Store the user's name in a data attribute
+        userBox.dataset.role = roleName; // Store the role in a data attribute
+        userBox.style.backgroundColor = color || "#f8f9fa"; // Default color if no role
+
+        // Create the span for the user's name and append it to the user box
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'user-name';
+        nameSpan.textContent = userName;
+        userBox.appendChild(nameSpan);
+
+        // Create the badge for the role if there is one
+        if (roleName) {
+            const roleBadge = document.createElement('span');
+            roleBadge.className = 'badge bg-secondary ms-2';
+            roleBadge.textContent = roleName;
+            userBox.appendChild(roleBadge);
+        }
+
+        // Create the close button and append it to the user box
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = 'X';
+        closeButton.className = 'btn-close position-absolute top-0 end-0';
+        closeButton.onclick = function() {
+            moveToInactive(userBox);
+        };
+        userBox.appendChild(closeButton);
+
+        userBox.addEventListener('dragstart', () => userBox.classList.add('dragging'));
+        userBox.addEventListener('dragend', () => userBox.classList.remove('dragging'));
+        return userBox;
+    }
+
+    function addUser() {
+        const userName = document.getElementById('userName').value.trim();
+        const defaultRoleName = "Participant"; // Specify a default role name here
+        const defaultRoleColor = "#cccccc"; // Specify a default role color here
+
+        if (userName) {
+            // Call createUserBoxWithRole with default role info to add a user with a role
+            const userBox = createUserBoxWithRole(userName, defaultRoleName, defaultRoleColor);
+            document.getElementById('userList').appendChild(userBox);
+            document.getElementById('userName').value = ''; // Clear the input after adding
+        }
+    }
+
+
+    function moveToInactive(user) {
+        const inactiveList = document.getElementById('inactiveList');
+        inactiveList.appendChild(user);
+        user.style.backgroundColor = "#f8f9fa"; // Reset background color
+        const badge = user.querySelector('.badge');
+        if (badge) {
+            user.removeChild(badge); // Remove the role badge
+        }
+        user.dataset.role = ""; // Clear any stored role data
+    }
+
+
+    function addRole() {
+        const roleName = document.getElementById('roleName').value;
+        const color = "#" + Math.floor(Math.random()*16777215).toString(16);
+        if (roleName) {
+            const roleBox = createRoleBox(roleName, color);
+            document.getElementById('roleList').appendChild(roleBox);
+            document.getElementById('roleName').value = '';
+        }
+    }
+
+
+    function shuffleUsers() {
+        mobNext(true,null)
+    }
+
+    function mobNext(random, user) {
+        const userList = document.getElementById('userList');
+        if (userList.children.length > 1) {
+            // Get names from all user boxes
+            const names = Array.from(userList.children).map(box => box.dataset.name);
+
+            const randomize = typeof random !== 'undefined' ? random : false;
+            let newUser = typeof user != 'undefined' ? user : null;
+            let triggerUpdate=true;
+
+            console.log("randomize="+randomize+" newUser="+newUser);
+
+            if( !randomize ) {
+                if( newUser === null )  {
+                    names.push(names.shift()); // Move the first name to the end
+                } else {
+                    // set user as first user
+                    console.log("names.length="+names.length)
+                    names[0] = newUser;
+                    triggerUpdate=false;
+                }
+            } else {
+                for (let i = names.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [names[i], names[j]] = [names[j], names[i]];
+                }
+                console.log("Random users: "+names)
+            }
+
+            // Reassign names to user boxes
+            Array.from(userList.children).forEach((box, index) => {
+                // Update only the text in the .user-name span, preserving other elements like badges and buttons
+                const nameSpan = box.querySelector('.user-name');
+                if (nameSpan) {
+                    nameSpan.textContent = names[index]; // Set the new name
+                }
+                box.dataset.name = names[index]; // Update the dataset name
+            });
+
+            console.log("User="+newUser)
+
+            // prevent loop-de-loop
+            if( triggerUpdate )  {
+                console.log("triggering update to room.html with user="+ names[0] )
+                // Update timer elements
+                const timerUser = document.getElementById('timer-user');
+                const timerNextUser = document.getElementById('timer-next-user');
+                timerUser.textContent = names[0]; // Update timer-user with the first user name
+                // timerNextUser.textContent = names[1]; // Update timer-next-user with the second user name
+
+
+                localStorage.setItem('user', names[0])
+                startTimer(10);
+            }
+        } else {
+            console.log("creating first user="+user);
+            const firstUser = createUserBoxWithRole( user, "Typist", "#6f42c1");
+            document.getElementById('userList').appendChild(firstUser);
+        }
+    }
+
+
+    function createRoleBox(roleName, color) {
+        const roleBox = document.createElement('div');
+        roleBox.className = 'roleBox draggable list-group-item';
+        roleBox.draggable = true;
+        roleBox.textContent = roleName;
+        roleBox.style.backgroundColor = color;
+        roleBox.addEventListener('dragstart', () => roleBox.classList.add('dragging'));
+        roleBox.addEventListener('dragend', () => roleBox.classList.remove('dragging'));
+        return roleBox;
+    }
+</script>
+
+
+</div>

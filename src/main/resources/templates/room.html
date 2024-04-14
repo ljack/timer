@@ -14,6 +14,7 @@
   <title>00:00 #[[${room.name}]]</title>
   <script src="/darkmode.js"></script>
   <style>
+
     @media (min-width: 992px) {
       .container{
         max-width: 720px;
@@ -58,7 +59,7 @@
 <div class="col-lg-8 mx-auto p-3 py-md-5">
 
   <div class="text-center">
-    <a class="text-decoration-none mb-3" href="/"><h1>Mob Timer</h1></a>
+    <a class="text-decoration-none mb-3" href="/"><h1>Enterprise Mob Timer</h1></a>
     <a href="/myroom" th:href="|/${room.name}|" class="text-body text-decoration-none">#[[${room.name}]]</a>
 
    <div class="display-1">
@@ -113,6 +114,10 @@
     </div>
 
 
+    <div th:replace="~{fragments/enterprise.html}"></div>
+
+
+    <!-- new stuff end here -->
 
     <!-- Modal -->
     <div class="modal fade" id="configurationModal" tabindex="-1" role="dialog" aria-labelledby="configurationModalLabel" aria-hidden="true">
@@ -243,6 +248,9 @@
     let timerUserDiv = document.getElementById('timer-user');
     function updateTimerUser(data) {
       timerUserDiv.innerText = data !== null && data !== "" ? ` 👤 ${data}` : '';
+      console.log("updateTimerUser with "+data)
+      if( data ) setFirstUser( data );
+
     }
 
     let timerNextUserDiv = document.getElementById('timer-next-user');

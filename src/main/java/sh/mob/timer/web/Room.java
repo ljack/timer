@@ -34,6 +34,7 @@ final class Room {
     var timerRequest = new TimerRequest(timer, requested, user, nextUser, TimerType.TIMER);
     timerRequests.add(timerRequest);
     sink.tryEmitNext(timerRequest);
+    log.info("Hello");
   }
 
   private String findNextUser(String user) {
