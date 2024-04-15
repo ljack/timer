@@ -8,14 +8,14 @@ import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
-import sh.mob.timer.web.Room.TimerRequest;
+
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -98,8 +98,8 @@ public class RoomApiController {
         if (timerRequest.timer() != null) {
             // basic update where the mob timer is wanted to be started
             long timer = truncateTooLongTimers(timerRequest.timer());
-            TimerRequest tr = room.getLastTimerRequest();
-            if (tr == null) {
+            Optional<TimerRequest> tr = room.lastTimerRequest();
+            if (tr.isEmpty()) {
                 if( timerRequest.user() != null && timerRequest.roleNames() == null) {
                     // cli: mob start
 
@@ -107,10 +107,10 @@ public class RoomApiController {
                     room.add(timer, timerRequest.user(), timerRequest.nextUser(), Instant.now(clock), timerRequest.userNames(), timerRequest.inactiveNames(),timerRequest.roleNames());
                 }
 
-                tr = room.getLastTimerRequest();
+                tr = room.lastTimerRequest();
             } else {
                 if( timerRequest.user() != null && timerRequest.roleNames() == null) {
-                    var putCurrentUserToFirst = tr.userNames();
+                    var putCurrentUserToFirst = tr.get().userNames();
                     putCurrentUserToFirst = putCurrentUserToFirst.stream()
                             .filter(user -> !user.equalsIgnoreCase(timerRequest.user()))
                             .collect(Collectors.toCollection(LinkedList::new));
@@ -118,16 +118,16 @@ public class RoomApiController {
 
                     String nextUser = putCurrentUserToFirst.size() > 1 ? putCurrentUserToFirst.get(1) : "";
 
-                    room.add(timer, timerRequest.user(), nextUser, Instant.now(clock), putCurrentUserToFirst, tr.inactiveNames(), tr.roleNames());
+                    room.add(timer, timerRequest.user(), nextUser, Instant.now(clock), putCurrentUserToFirst, tr.get().inactiveNames(), tr.get().roleNames());
                 } else{
-                    room.add(timer, timerRequest.user(), tr.nextUser(), Instant.now(clock), tr.userNames(), tr.inactiveNames(), tr.roleNames());
+                    room.add(timer, timerRequest.user(), tr.get().nextUser(), Instant.now(clock), tr.get().userNames(), tr.get().inactiveNames(), tr.get().roleNames());
                 }
-                tr = room.getLastTimerRequest();
+                tr = room.lastTimerRequest();
             }
 
             log.info("Start timer {} by user {} for room {}", timerRequest, timerRequest.user(), room);
             incrementTimerStatsExceptForTestRoom(room, timer);
-            return new PutTimerResponse(tr.user(), tr.nextUser(), tr.userNames(), tr.inactiveNames(), tr.roleNames());
+            return new PutTimerResponse(tr.get().user(), tr.get().nextUser(), tr.get().userNames(), tr.get().inactiveNames(), tr.get().roleNames());
 
         } else if (timerRequest.breaktimer() != null) {
             // basic update where the break timer is wanted to be started
@@ -143,22 +143,22 @@ public class RoomApiController {
         } else if ("next".equalsIgnoreCase(timerRequest.action())) {
             // called either from "mob next --ping" or enterprise.html when mobNext is clicked.
             // don't touch the timer, just update user information
-            TimerRequest last = room.getLastTimerRequest();
-            return new PutTimerResponse(last.user(), last.nextUser(), last.userNames(), last.inactiveNames(), last.roleNames() );
+            Optional<TimerRequest> last = room.lastTimerRequest();
+            return new PutTimerResponse(last.get().user(), last.get().nextUser(), last.get().userNames(), last.get().inactiveNames(), last.get().roleNames() );
 
         } else if ("update".equalsIgnoreCase(timerRequest.action())) {
             // called from room.html when
-            TimerRequest last = room.getLastTimerRequest();
-            if (last == null) {
+            Optional<TimerRequest> last = room.lastTimerRequest();
+            if (last.isEmpty()) {
                 var names = timerRequest.userNames();
                 String first = names.size() > 0 ? names.get(0) : "unknown";
                 String second = names.size() > 1 ? names.get(1) : "unknown";
                 room.add(10L, first, second, Instant.now(clock), timerRequest.userNames(), timerRequest.inactiveNames(), timerRequest.roleNames());
-                last = room.getLastTimerRequest();
+                last = room.lastTimerRequest();
             } else {
-                room.add(last.timer(), last.user(), last.nextUser(), last.requested(), timerRequest.userNames(), timerRequest.inactiveNames(), timerRequest.roleNames());
+                room.add(last.get().timer(), last.get().user(), last.get().nextUser(), last.get().requested(), timerRequest.userNames(), timerRequest.inactiveNames(), timerRequest.roleNames());
             }
-            return new PutTimerResponse(last.user(), last.nextUser(), last.userNames(),last.inactiveNames(), timerRequest.roleNames());
+            return new PutTimerResponse(last.get().user(), last.get().nextUser(), last.get().userNames(), last.get().inactiveNames(), timerRequest.roleNames());
 
         } else {
             log.warn("Could not understand PUT request for room {}", roomId);

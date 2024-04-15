@@ -52,13 +52,12 @@
                 <div class="list-group mb-3" id="inactiveList"></div>
             </div>
 
-            <div class="col-md-6">
-                <h2>Roles</h2>
-                <div class="list-group" id="roleList"></div>
-
-                <div class="visually-hidden">
-                   <input class="form-control" id="roleName" placeholder="Enter role name" type="text">
-                   <button class="btn btn-secondary mt-2" onclick="addRole()">Add Role</button>
+            <div class="visually-hidden">
+                <div class="col-md-6">
+                    <h2>Roles</h2>
+                    <div class="list-group" id="roleList"></div>
+                    <input class="form-control" id="roleName" placeholder="Enter role name" type="text">
+                    <button class="btn btn-secondary mt-2" onclick="addRole()">Add Role</button>
                 </div>
             </div>
         </div>
@@ -70,13 +69,22 @@
 <script type="text/javascript">
     document.addEventListener("DOMContentLoaded", function() {
         setupDragListeners();
-        addDefaultUsersWithLimitedRoles(); // Function that adds users with roles until roles run out
+        addDefaultUsersWithLimitedRoles();
+
+        let userNameInput = document.getElementById('userName');
+        userNameInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();  // Prevent the default form submit behavior
+                addUser();              // Call the addUser function
+            }
+        });
+
     });
 
     function moveToInactive(user) {
         const inactiveList = document.getElementById('inactiveList');
         inactiveList.appendChild(user);
-        user.style.backgroundColor = "#f8f9fa"; // Reset background color
+        user.style.backgroundColor = "#997404"; // Reset background color
 
         const badge = user.querySelector('.badge');
         if (badge) {
@@ -90,7 +98,7 @@
     function addUser() {
         const userName = document.getElementById('userName').value.trim();
         const defaultRoleName = "Participant"; // Specify a default role name here
-        const defaultRoleColor = "#cccccc"; // Specify a default role color here
+        const defaultRoleColor = "#"; // Specify a default role color here
 
         if (userName) {
             const userBox = createUserBox(userName,null,null);
@@ -134,18 +142,39 @@
         const lists = ['userList', 'roleList', 'inactiveList'];
         lists.forEach(listId => {
             const list = document.getElementById(listId);
+
+            list.addEventListener('dragstart', function(event) {
+                if (event.target.classList.contains('userBox') || event.target.classList.contains('roleBox')) {
+                    event.target.classList.add('dragging');
+                }
+            });
+
             list.addEventListener('dragover', function(event) {
                 event.preventDefault();
             });
+
             list.addEventListener('drop', function(event) {
                 event.preventDefault();
                 const draggingElement = document.querySelector('.dragging');
                 if (draggingElement && event.target.classList.contains('userBox')) {
+                    draggingElement.classList.remove('dragging');
+
                     if (draggingElement.classList.contains('roleBox')) {
                         handleRoleAssignment(draggingElement, event.target);
                     } else if (draggingElement.classList.contains('userBox')) {
-                        this.insertBefore(draggingElement, event.target.nextSibling);
 
+                       if (listId === 'userList' && draggingElement.classList.contains('userBox')) {
+                            // Add the close button back if it's moved to an active list
+                            addCloseButton(draggingElement);
+                        }
+
+                        // Determine where to insert the element
+                        const targetIsAfterDragging = event.target.compareDocumentPosition(draggingElement) & Node.DOCUMENT_POSITION_FOLLOWING;
+                        if (targetIsAfterDragging) {
+                            event.target.parentNode.insertBefore(draggingElement, event.target);
+                        } else {
+                            event.target.parentNode.insertBefore(draggingElement, event.target.nextSibling);
+                        }
                         sendUpdate()
                     }
                 }
@@ -153,6 +182,33 @@
             });
         });
     }
+
+    function addCloseButton(userBox, isInactive = false) {
+        // Check if the close button already exists to avoid duplicates
+        if (!userBox.querySelector('.btn-close')) {
+            const closeButton = document.createElement('button');
+
+            closeButton.className = 'btn-close position-absolute top-0 end-0';
+
+            if (isInactive) {
+                closeButton.innerHTML = '&#x1F5D1;';
+                // Remove the userBox from the DOM if it's in the inactive list
+                closeButton.onclick = function() {
+                    console.log( userBox);
+                    userBox.remove(); // Removes the userBox element from the DOM
+                    sendUpdate(); // Call to update the backend or state
+                };
+            } else {
+                closeButton.innerHTML = 'X';
+                closeButton.onclick = function() {
+                    moveToInactive(userBox);
+                };
+            }
+
+            userBox.appendChild(closeButton);
+        }
+    }
+
 
     function handleRoleAssignment(roleBox, targetUser) {
         if (targetUser && targetUser.classList.contains('userBox')) {
@@ -201,7 +257,7 @@
         return roleBox;
     }
 
-    function createUserBox(userName, roleName, color) {
+    function createUserBox(userName, roleName, color, inActive = false) {
         const userBox = document.createElement('div');
 
         userBox.className = 'userBox draggable list-group-item';
@@ -217,13 +273,8 @@
         userBox.appendChild(nameSpan);
 
         // Create the close button and append it to the user box
-        const closeButton = document.createElement('button');
-        closeButton.innerHTML = 'X';
-        closeButton.className = 'btn-close position-absolute top-0 end-0';
-        closeButton.onclick = function() {
-            moveToInactive(userBox);
-        };
-        userBox.appendChild(closeButton);
+         addCloseButton(userBox, inActive)
+
 
         userBox.addEventListener('dragstart', () => userBox.classList.add('dragging'));
         userBox.addEventListener('dragend', () => userBox.classList.remove('dragging'));
@@ -283,7 +334,7 @@
 
         inactiveNames?.forEach((userName, index) => {
             const inactiveList = document.getElementById('inactiveList');
-            const userBox = createUserBox(userName,null, "#f8f9fa")
+            const userBox = createUserBox(userName,null, "#f8f9fa",true)
             inactiveList.appendChild(userBox);
         })
 
