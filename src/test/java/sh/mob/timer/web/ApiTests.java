@@ -16,14 +16,17 @@ import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWeb
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 
 @SpringBootTest
 @AutoConfigureWebTestClient
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class ApiTests {
 
   @Autowired private WebTestClient webTestClient;
@@ -80,7 +83,7 @@ class ApiTests {
             .isOk()
             .expectHeader()
             .contentTypeCompatibleWith(TEXT_EVENT_STREAM)
-            .returnResult(Object.class);
+            .returnResult(Object.class).getResponseBody();
 
     Map<String, Object> t = new java.util.HashMap<>();
     t.put("timer", 10);
@@ -88,7 +91,11 @@ class ApiTests {
     t.put("user", "alice");
     t.put("nextUser", "john");
     t.put("type", "TIMER");
-    StepVerifier.create(result.getResponseBody())
+    t.put("userNames", userNames);
+    t.put("inactiveNames", inactiveNames );
+    t.put("roleNames", roleNames );
+
+    StepVerifier.create(result)
         .expectNext(List.of(), t)
         .thenCancel()
         .verify();
@@ -121,7 +128,7 @@ class ApiTests {
             .isOk()
             .expectHeader()
             .contentTypeCompatibleWith(TEXT_EVENT_STREAM)
-            .returnResult(Object.class);
+            .returnResult(Object.class).getResponseBody();
 
     Map<String, Object> t = new java.util.HashMap<>();
     t.put("timer", 10);
@@ -129,7 +136,11 @@ class ApiTests {
     t.put("user", "alice");
     t.put("nextUser", "john");
     t.put("type", "TIMER");
-    StepVerifier.create(result.getResponseBody())
+    t.put("userNames", userNames);
+    t.put("inactiveNames", inactiveNames );
+    t.put("roleNames", roleNames );
+
+    StepVerifier.create(result)
         .expectNext(List.of(), t)
         .thenCancel()
         .verify();
@@ -159,7 +170,7 @@ class ApiTests {
             .isOk()
             .expectHeader()
             .contentTypeCompatibleWith(TEXT_EVENT_STREAM)
-            .returnResult(Object.class);
+            .returnResult(Object.class).getResponseBody();
 
     Map<String, Object> t = new java.util.HashMap<>();
     t.put("timer", 10);
@@ -167,7 +178,10 @@ class ApiTests {
     t.put("user", "alice");
     t.put("nextUser", "john");
     t.put("type", "TIMER");
-    StepVerifier.create(result.getResponseBody())
+    t.put("userNames", userNames);
+    t.put("inactiveNames", inactiveNames );
+    t.put("roleNames", roleNames );
+    StepVerifier.create(result)
         .expectNext(List.of(), t)
         .thenCancel()
         .verify();
@@ -175,7 +189,7 @@ class ApiTests {
 
     // mob next
     // TODO yes i know we're reusing the same api...
-    Mono<PutTimerResponse> responseMono = webTestClient
+    var response = webTestClient
             .put()
             .uri("/big-boar-37")
             .contentType(MediaType.APPLICATION_JSON)
@@ -185,13 +199,14 @@ class ApiTests {
             .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .returnResult(PutTimerResponse.class) // Changed from Object.class to String.class
             .getResponseBody()
-            .single(); // Use single() to get a Mono<String> that emits the single expected element
+            .single()
+            .block();
 
 
     Map<String, Object> putResponseObject = new java.util.HashMap<>();
 
     putResponseObject.put("nextUser", "john");
-    PutTimerResponse putTimerResponse = responseMono.block();
+    PutTimerResponse putTimerResponse = response;
     Assertions.assertEquals(putResponseObject.get("nextUser"), "john");
 
   }

@@ -19,7 +19,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping()
 public class RoomApiController {
 
     private static final String SMOKETEST_ROOM_NAME = "testroom-310a9c47-515c-4ad7-a229-ae8efbab7387";
@@ -41,8 +40,9 @@ public class RoomApiController {
      * @param response
      * @return
      */
-    @GetMapping
+
     @RequestMapping(
+            method = RequestMethod.GET,
             value = "/{roomId:[A-Za-z0-9-_]+}/events",
             produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<Object>> getEventStream(
@@ -100,7 +100,13 @@ public class RoomApiController {
             long timer = truncateTooLongTimers(timerRequest.timer());
             TimerRequest tr = room.getLastTimerRequest();
             if (tr == null) {
-                room.add(timer, timerRequest.user(), "", Instant.now(clock), List.of( timerRequest.user()), null,null);
+                if( timerRequest.user() != null && timerRequest.roleNames() == null) {
+                    // cli: mob start
+
+                } else {
+                    room.add(timer, timerRequest.user(), timerRequest.nextUser(), Instant.now(clock), timerRequest.userNames(), timerRequest.inactiveNames(),timerRequest.roleNames());
+                }
+
                 tr = room.getLastTimerRequest();
             } else {
                 if( timerRequest.user() != null && timerRequest.roleNames() == null) {
