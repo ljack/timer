@@ -1,14 +1,12 @@
 package sh.mob.timer.web;
 
 import static java.time.temporal.ChronoUnit.*;
-import static java.util.function.Predicate.not;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Sinks;
@@ -19,7 +17,8 @@ final class Room {
   private static final Logger log = LoggerFactory.getLogger(Room.class);
 
   public static final TimerRequest NULL_TIMER_REQUEST =
-      new TimerRequest(0L, null, null, null, null);
+      new TimerRequest(0L, null, null, null, null,null, null,null);
+
   private final String name;
   private final List<TimerRequest> timerRequests = new CopyOnWriteArrayList<>();
   private final Sinks.Many<TimerRequest> sink =
@@ -29,47 +28,54 @@ final class Room {
     this.name = name;
   }
 
-  public void add(Long timer, String user, Instant requested) {
-    var nextUser = findNextUser(user);
-    var timerRequest = new TimerRequest(timer, requested, user, nextUser, TimerType.TIMER);
+  public void add(Long timer, String user, String nextUserRequested, Instant requested,
+                  List<String> userNames,
+                  List<String> inactiveNames,
+                  List<String> roleNames ) {
+
+    String nextUser = nextUserRequested;
+
+    var timerRequest = new TimerRequest(timer, requested, user, nextUser, TimerType.TIMER, userNames, inactiveNames, roleNames);
     timerRequests.add(timerRequest);
     sink.tryEmitNext(timerRequest);
-    log.info("Hello");
   }
 
-  private String findNextUser(String user) {
+
+    public TimerRequest getLastTimerRequest() {
+      if (timerRequests.isEmpty()) {
+        return null;
+      }
+
+      var last = timerRequests.getLast();
+      return last;
+    }
+
+    public TimerRequest findNextUser(String user) {
     if (timerRequests.isEmpty()) {
       return null;
     }
 
-    var users =
-        timerRequests.stream()
-            .filter(timerRequest -> timerRequest.type == TimerType.TIMER)
-            .map(TimerRequest::getUser)
-            .filter(Objects::nonNull)
-            .filter(not(String::isBlank))
-            .collect(Collectors.toList());
-
-    while (!users.isEmpty() && users.lastIndexOf(user) == users.size() - 1) {
-      users.remove(users.size() - 1);
-    }
-
-    if (users.isEmpty()) {
+    var last = timerRequests.getLast();
+    if( last == null )
       return null;
-    }
 
-    int nextIndexCandidate = users.lastIndexOf(user) + 1;
-    return users.get(nextIndexCandidate);
+    var nextUser = last.nextUser();
+    if( nextUser != null)
+      return last;
+
+    return null;
   }
 
-  public void addBreaktimer(Long breaktimer, String user) {
+  public void addBreaktimer(Long breaktimer, PutTimerRequest putTimerRequest) {
     TimerRequest timerRequest =
         new TimerRequest(
             breaktimer,
-            Instant.now(),
-            user,
-            lastTimerRequest().map(TimerRequest::getNextUser).orElse(null),
-            TimerType.BREAKTIMER);
+            Instant.now(), putTimerRequest.user(),
+            lastTimerRequest().map(TimerRequest::nextUser).orElse(null),
+            TimerType.BREAKTIMER,
+            putTimerRequest.userNames(),
+            putTimerRequest.inactiveNames(),
+            putTimerRequest.roleNames());
     timerRequests.add(timerRequest);
     sink.tryEmitNext(timerRequest);
   }
@@ -88,7 +94,7 @@ final class Room {
   public void removeOldTimerRequests() {
     var now = Instant.now();
     this.timerRequests.removeIf(
-        timerRequest -> now.minus(24, HOURS).isAfter(timerRequest.getRequested()));
+        timerRequest -> now.minus(24, HOURS).isAfter(timerRequest.requested()));
     if (timerRequests.isEmpty()) {
       sink.tryEmitNext(NULL_TIMER_REQUEST);
       log.info("Emptied room {}", name);
@@ -112,88 +118,26 @@ final class Room {
   }
 
   private static boolean isTimerActive(TimerRequest timerRequest, Instant now) {
-    return timerRequest.getTimer() != null
-        && timerRequest.getTimer() > 0
-        && timerRequest.getRequested() != null
-        && timerRequest.getRequested().plus(timerRequest.getTimer(), MINUTES).isAfter(now);
+    return timerRequest.timer() != null
+        && timerRequest.timer() > 0
+        && timerRequest.requested() != null
+        && timerRequest.requested().plus(timerRequest.timer(), MINUTES).isAfter(now);
   }
 
-  public static final class TimerRequest {
-
+  public record TimerRequest(Long timer,
+                             Instant requested,
+                             String user,
+                             String nextUser,
+                             TimerType type,
+                             List<String> userNames,
+                             List<String> inactiveNames,
+                             List<String> roleNames
+  ) {
     enum TimerType {
       TIMER,
       BREAKTIMER
     }
-
-    private final Long timer;
-    private final Instant requested;
-    private final String user;
-    private final String nextUser;
-    private final TimerType type;
-
-    TimerRequest(Long timer, Instant requested, String user, String nextUser, TimerType type) {
-      this.timer = timer;
-      this.requested = requested;
-      this.user = user;
-      this.nextUser = nextUser;
-      this.type = type;
-    }
-
-    public Long getTimer() {
-      return timer;
-    }
-
-    public Instant getRequested() {
-      return requested;
-    }
-
-    public String getUser() {
-      return user;
-    }
-
-    public String getNextUser() {
-      return nextUser;
-    }
-
-    public TimerType getType() {
-      return type;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj == this) return true;
-      if (obj == null || obj.getClass() != this.getClass()) return false;
-      var that = (TimerRequest) obj;
-      return Objects.equals(this.timer, that.timer)
-          && Objects.equals(this.requested, that.requested)
-          && Objects.equals(this.user, that.user)
-          && Objects.equals(this.nextUser, that.nextUser)
-          && this.type == that.type;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(timer, requested, user, nextUser, type);
-    }
-
-    @Override
-    public String toString() {
-      return "TimerRequest["
-          + "timer="
-          + timer
-          + ", "
-          + "requested="
-          + requested
-          + ", "
-          + "user="
-          + user
-          + ", "
-          + "nextUser="
-          + nextUser
-          + ", "
-          + "type="
-          + type
-          + ']';
-    }
   }
+
+
 }

@@ -249,7 +249,7 @@
     function updateTimerUser(data) {
       timerUserDiv.innerText = data !== null && data !== "" ? ` 👤 ${data}` : '';
       console.log("updateTimerUser with "+data)
-      if( data ) setFirstUser( data );
+
 
     }
 
@@ -464,12 +464,17 @@
 
     eventSource.addEventListener('TIMER_REQUEST', (event) => {
       console.log('handling event TIMER_REQUEST ' + event.data);
+
       let timerRequest = JSON.parse(event.data);
+
       let requested = timerRequest["requested"];
       let timerInMinutes = timerRequest["timer"];
       let user = timerRequest["user"];
       let nextUser = timerRequest["nextUser"];
       let type = timerRequest["type"];
+      let userNames = timerRequest["userNames"];
+      let inactiveNames = timerRequest["inactiveNames"];
+      let roleNames = timerRequest["roleNames"];
 
       if (timerInMinutes === 0 && user === null) {
         console.log('Resetting state');
@@ -490,7 +495,8 @@
       }
 
       updateTimerUser(user)
-      updateTimerNextUser(null)
+      updateTimerNextUser(nextUser)
+      updateUserNameList(userNames, inactiveNames, roleNames)
       updateTimerType(type)
 
       requestedTimestamp = Date.parse(requested);
@@ -505,10 +511,37 @@
 
     checkAudioPlayback();
 
-    function sendTimer(type, timer, user) {
+    function sendUpdate() {
+      sendTimer(null, 0, null, null,'update')
+    }
+
+    function sendTimer(type, timeInMinutes, user, nextUser, action) {
       let method = "PUT";
       let url = "/" + room;
-      let json = `{"${type}": ${timer},"user": "${user}"}`;
+
+      const userList = document.getElementById('userList')
+      const userNames = Array.from(userList.children).map(box => box.dataset.name);
+
+      const inactiveList = document.getElementById('inactiveList')
+      const inactiveNames = Array.from(inactiveList.children).map(box => box.dataset.name);
+
+      const roleList = document.getElementById('roleList')
+      const roleNames = Array.from(roleList.children).map(box => box.dataset.roleName);
+
+
+      // Construct the JSON payload as an object
+      let data = {
+        action: action,
+        [type]: timeInMinutes,  // Using computed property name for 'type'
+        user: user,
+        nextUser: nextUser,
+        userNames: userNames,  // Assuming 'userNames' is already an array
+        inactiveNames: inactiveNames,
+        roleNames: roleNames
+      };
+
+      // Convert the object to a JSON string
+      let json = JSON.stringify(data);
 
       console.log(`${method} ${url} ${json}`)
       var xhr = new XMLHttpRequest();
@@ -552,9 +585,11 @@
     function startTimerDefault() {
       startTimer(localStorage.getItem('timer'));
     }
+
     function startTimer(timer) {
       sendTimer('timer', timer, localStorage.getItem('user'));
     }
+
     function updateTimerButton() {
       timerButton.innerText = localStorage.getItem('timer') + " ⏲";
     }
