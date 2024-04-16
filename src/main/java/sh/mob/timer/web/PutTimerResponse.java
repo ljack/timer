@@ -17,4 +17,16 @@ public record PutTimerResponse(String currentUser,
                                List<String> inactiveNames,
                                List<String> roleNames ) {
 
+
+    public static PutTimerResponse fromTimerRequest(TimerRequest tr) {
+        // Assuming TimerRequest has methods to provide these values
+        return new PutTimerResponse(
+                tr.user(),
+                tr.nextUser(),
+                tr.userNames(),
+                tr.inactiveNames(),
+                tr.roleNames()
+        );
+    }
+
 }

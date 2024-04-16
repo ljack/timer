@@ -13,9 +13,7 @@ import reactor.core.publisher.Flux;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedList;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -144,7 +142,14 @@ public class RoomApiController {
             // called either from "mob next --ping" or enterprise.html when mobNext is clicked.
             // don't touch the timer, just update user information
             Optional<TimerRequest> last = room.lastTimerRequest();
-            return new PutTimerResponse(last.get().user(), last.get().nextUser(), last.get().userNames(), last.get().inactiveNames(), last.get().roleNames() );
+
+            String oldFirst = removeElementSafely( last.get().userNames(), 0,"unknown");
+            last.get().userNames().addLast(oldFirst);
+            String newFirst = getElementSafely( last.get().userNames(),0, "unknown");
+            String nextNext = getElementSafely( last.get().userNames(),1, "unknown");
+            var newTimerRequest = room.add( last.get().timer(), newFirst, nextNext, last.get().requested(),  last.get().userNames(), last.get().inactiveNames(), last.get().roleNames() );
+
+            return PutTimerResponse.fromTimerRequest(newTimerRequest);
 
         } else if ("update".equalsIgnoreCase(timerRequest.action())) {
             // called from room.html when
@@ -184,5 +189,20 @@ public class RoomApiController {
         return Math.min(60 * 24, Math.max(0, timer));
     }
 
+    public static <T> T getElementSafely(List<T> list, int index, T defaultValue) {
+        if (index >= 0 && index < list.size()) {
+            return list.get(index);
+        } else {
+            return defaultValue;
+        }
+    }
+
+    public static <T> T removeElementSafely(List<T> list, int index, T defaultValue) {
+        if (index >= 0 && index < list.size()) {
+            return list.remove(index);
+        } else {
+            return defaultValue;
+        }
+    }
 
 }

@@ -29,7 +29,10 @@ final class Room {
         this.name = name;
     }
 
-    public void add(Long timer, String user, String nextUserRequested, Instant requested,
+    public TimerRequest add(Long timer,
+                    String user,
+                    String nextUserRequested,
+                    Instant requested,
                     List<String> userNames,
                     List<String> inactiveNames,
                     List<String> roleNames) {
@@ -38,6 +41,7 @@ final class Room {
         var timerRequest = new TimerRequest(timer, requested, user, nextUserRequested, TimerRequest.TimerType.TIMER, userNames, inactiveNames, roleNames);
         timerRequests.add(timerRequest);
         sink.tryEmitNext(timerRequest);
+        return timerRequest;
     }
 
     public void addBreaktimer(Long timer, PutTimerRequest putTimerRequest) {
