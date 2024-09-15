@@ -68,8 +68,9 @@
    </div>
 
     <div>
-     <span id="timer-user" class="text-muted"></span>
-     <span id="timer-next-user" class="text-muted" title="next person"></span>
+     <span id="timer-user" class="text-muted" style="font-size: 48px; display: inline-block; margin: 10px;"></span>
+      <br/>
+     <span id="timer-next-user" class="text-muted" title="next person" style="font-size: 48px; display: inline-block; margin: 10px;"></span>
     </div>
 
     <div>
@@ -247,12 +248,12 @@
 
     let timerUserDiv = document.getElementById('timer-user');
     function updateTimerUser(data) {
-      timerUserDiv.innerText = data !== null && data !== "" ? ` 👤 ${data}` : '';
+      timerUserDiv.innerText = data !== null && data !== "" ? ` 🛞🦶⌨️ ${data}` : '';
     }
 
     let timerNextUserDiv = document.getElementById('timer-next-user');
     function updateTimerNextUser(data) {
-      timerNextUserDiv.innerText = data !== null ? ` ➡️ ${data}` : '';
+      timerNextUserDiv.innerText = data !== null ? ` 🗺️🧭️ ${data}` : '';
     }
 
 
