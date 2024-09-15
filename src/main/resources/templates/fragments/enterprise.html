@@ -52,12 +52,12 @@
                 <div class="list-group mb-3" id="inactiveList"></div>
             </div>
 
-            <div class="visually-hidden">
-                <div class="col-md-6">
+            <div class="">
+                <div class="col-md-12">
                     <h2>Roles</h2>
                     <div class="list-group" id="roleList"></div>
-                    <input class="form-control" id="roleName" placeholder="Enter role name" type="text">
-                    <button class="btn btn-secondary mt-2" onclick="addRole()">Add Role</button>
+                    <!-- <input class="form-control" id="roleName" placeholder="Enter role name" type="text">
+                    <button class="btn btn-secondary mt-2" onclick="addRole()">Add Role</button> -->
                 </div>
             </div>
         </div>
@@ -229,29 +229,50 @@
 
 
     function addDefaultUsersWithLimitedRoles() {
-        const defaultUsers = ["Jarkko", "Sampsa", "Markus", "Ahma", "Tuomo", "Suvi"];
+        // const defaultUsers = [];
         const defaultRoles = [
             { name: "Ajaja", color: "#6f42c1", desc : "Jakaa ruudun ja kädet näppisellä tekee mitä Kartturi sanoo." },
             { name: "Kartturi", color: "#dc3545", desc : "Neuvottelee Takapenkin kanssa ja kertoo Ajajalle mitä tehdään" },
+            { name: "Takapenkillä", color: "#008080", desc : "Takapenkillä seurataan mitä etupenkillä tapahtuu ja kommentoidaan tarvittaessa. Joskus takapenkkiläiset jätetään bussipysäkille viilentymään." },
           //  { name: "Facilitator", color: "#28a745" }
         ];
 
         // Ensure roles are created and appended to the role list
         defaultRoles.forEach(role => {
-            const roleBox = createRoleBox(role.name, role.color);
+            const roleBox = createRoleBox(role.name, role.color, role.desc );
             document.getElementById('roleList').appendChild(roleBox);
         });
 
     }
 
 
-    function createRoleBox(roleName, color) {
+    function createRoleBox(roleName, color, desc = "Role without description") {
         const roleBox = document.createElement('div');
-        roleBox.className = 'roleBox draggable list-group-item';
+        roleBox.className = 'roleBox draggable list-group-item d-flex justify-content-between align-items-start';
         roleBox.draggable = true;
-        roleBox.textContent = roleName;
+        // roleBox.textContent = roleName;
         roleBox.dataset.roleName = roleName;
         roleBox.style.backgroundColor = color;
+
+        // Create the title and description elements
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'ms-2 me-auto';
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'fw-bold';
+        titleDiv.textContent = roleName;
+
+        const descriptionDiv = document.createElement('small');
+        descriptionDiv.className = 'text-muted';
+        descriptionDiv.textContent = desc;
+
+        // Append title and description to contentDiv
+        contentDiv.appendChild(titleDiv);
+        contentDiv.appendChild(descriptionDiv);
+
+        // Append contentDiv to the main roleBox
+        roleBox.appendChild(contentDiv);
+
         roleBox.addEventListener('dragstart', () => roleBox.classList.add('dragging'));
         roleBox.addEventListener('dragend', () => roleBox.classList.remove('dragging'));
         return roleBox;
@@ -339,7 +360,9 @@
         })
 
         userNames?.forEach((userName, index) => {
-            let roleBox = roleBoxes[index] || null; // Get the role or an empty object if index exceeds roles
+
+            let roleBox = roleBoxes[Math.min(index, roleBoxes.length - 1)] || null;
+
             let roleName = null;
             let roleColor = null;
             // only assign roles as long as there are roles..
